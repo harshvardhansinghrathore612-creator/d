@@ -1,0 +1,43 @@
+name: FFUF Manual Scan
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ffuf:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install ffuf
+        run: |
+          sudo apt update
+          sudo apt install -y ffuf wget
+
+      - name: Download wordlist
+        run: |
+          wget -q https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/common.txt -O wordlist.txt
+
+      - name: Run ffuf on targets
+        run: |
+          mkdir -p results
+          i=1
+          while read -r target; do
+            echo "[+] Fuzzing: $target"
+            ffuf -u "$target" \
+                 -w wordlist.txt \
+                 -t 50 \
+                 -timeout 10 \
+                 -mc 200,302 \
+                 -of json \
+                 -o "results/result_$i.json"
+            i=$((i+1))
+          done < targets.txt
+
+      - name: Upload ffuf results
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffuf-results
+          path: results/
